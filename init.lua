@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -160,7 +160,38 @@ vim.opt.scrolloff = 10
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
-
+-- custom keybinds - trying to avoid using esc
+vim.api.nvim_set_keymap('i', 'jj', '<Esc>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-[>', '<Esc>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', 'v', '<Esc>', { noremap = true, silent = true })
+-- screen centering after text jumps
+vim.api.nvim_set_keymap('n', '<C-d>', '<C-d>zz', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-u>', '<C-u>zz', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', 'n', 'nzz', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', 'N', 'Nzz', { noremap = true, silent = true })
+-- custom remaps to make delete and paste better
+vim.api.nvim_set_keymap('v', '<leader>p', '"_dP', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>d', '"_d', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<leader>d', '"_d', { noremap = true, silent = true })
+-- remove trailing whitespaces (custom)
+vim.api.nvim_create_autocmd('FileType', {
+  group = vim.api.nvim_create_augroup('trim_whitespaces', { clear = true }),
+  desc = 'Trim trailing white spaces',
+  pattern = 'bash,c,cpp,lua,java,go,php,javascript,make,python,rust,perl,sql,markdown',
+  callback = function()
+    vim.api.nvim_create_autocmd('BufWritePre', {
+      pattern = '<buffer>',
+      -- Trim trailing whitespaces
+      callback = function()
+        -- Save cursor position to restore later
+        local curpos = vim.api.nvim_win_get_cursor(0)
+        -- Search and replace trailing whitespaces
+        vim.cmd [[keeppatterns %s/\s\+$//e]]
+        vim.api.nvim_win_set_cursor(0, curpos)
+      end,
+    })
+  end,
+})
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
@@ -189,6 +220,8 @@ vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left wind
 vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+-- custom autocomplete
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -239,7 +272,8 @@ require('lazy').setup({
 
   -- "gc" to comment visual regions/lines
   { 'numToStr/Comment.nvim', opts = {} },
-
+  -- vim be good plugin
+  { 'ThePrimeagen/vim-be-good' },
   -- Here is a more advanced example where we pass configuration
   -- options to `gitsigns.nvim`. This is equivalent to the following Lua:
   --    require('gitsigns').setup({ ... })
@@ -255,6 +289,58 @@ require('lazy').setup({
         topdelete = { text = '‾' },
         changedelete = { text = '~' },
       },
+      on_attach = function(bufnr)
+        local gitsigns = require 'gitsigns'
+
+        local function map(mode, l, r, opts)
+          opts = opts or {}
+          opts.buffer = bufnr
+          vim.keymap.set(mode, l, r, opts)
+        end
+
+        -- Navigation
+        map('n', ']c', function()
+          if vim.wo.diff then
+            vim.cmd.normal { ']c', bang = true }
+          else
+            gitsigns.nav_hunk 'next'
+          end
+        end)
+
+        map('n', '[c', function()
+          if vim.wo.diff then
+            vim.cmd.normal { '[c', bang = true }
+          else
+            gitsigns.nav_hunk 'prev'
+          end
+        end)
+
+        -- Actions
+        map('n', '<leader>hs', gitsigns.stage_hunk)
+        map('n', '<leader>hr', gitsigns.reset_hunk)
+        map('v', '<leader>hs', function()
+          gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' }
+        end)
+        map('v', '<leader>hr', function()
+          gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
+        end)
+        map('n', '<leader>hS', gitsigns.stage_buffer)
+        map('n', '<leader>hu', gitsigns.undo_stage_hunk)
+        map('n', '<leader>hR', gitsigns.reset_buffer)
+        map('n', '<leader>hp', gitsigns.preview_hunk)
+        map('n', '<leader>hb', function()
+          gitsigns.blame_line { full = true }
+        end)
+        map('n', '<leader>tb', gitsigns.toggle_current_line_blame)
+        map('n', '<leader>hd', gitsigns.diffthis)
+        map('n', '<leader>hD', function()
+          gitsigns.diffthis '~'
+        end)
+        map('n', '<leader>td', gitsigns.toggle_deleted)
+
+        -- Text object
+        map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>')
+      end,
     },
   },
 
@@ -272,7 +358,7 @@ require('lazy').setup({
   -- Then, because we use the `config` key, the configuration only runs
   -- after the plugin has been loaded:
   --  config = function() ... end
-
+  --[[
   { -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
@@ -294,7 +380,7 @@ require('lazy').setup({
         ['<leader>h'] = { 'Git [H]unk' },
       }, { mode = 'v' })
     end,
-  },
+  },]]
 
   -- NOTE: Plugins can specify dependencies.
   --
@@ -374,15 +460,30 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-      vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-      vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
+      vim.keymap.set('n', '<leader>..', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
-
+      vim.keymap.set('n', '<leader>u', '<cmd>Telescope undo<cr>') -- keymap for telescope undo plugin
+      -- default keybind for telescope undo:
+      --[[mappings = {
+        i = {
+          ["<cr>"] = require("telescope-undo.actions").yank_additions,
+          ["<S-cr>"] = require("telescope-undo.actions").yank_deletions,
+          ["<C-cr>"] = require("telescope-undo.actions").restore,
+          -- alternative defaults, for users whose terminals do questionable things with modified <cr>
+          ["<C-y>"] = require("telescope-undo.actions").yank_deletions,
+          ["<C-r>"] = require("telescope-undo.actions").restore,
+        },
+        n = {
+          ["y"] = require("telescope-undo.actions").yank_additions,
+          ["Y"] = require("telescope-undo.actions").yank_deletions,
+          ["u"] = require("telescope-undo.actions").restore,
+        },]]
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
         -- You can pass additional configuration to Telescope to change the theme, layout, etc.
@@ -407,7 +508,39 @@ require('lazy').setup({
       end, { desc = '[S]earch [N]eovim files' })
     end,
   },
-
+  -- telescope undo setup
+  {
+    'debugloop/telescope-undo.nvim',
+    dependencies = { -- note how they're inverted to above example
+      {
+        'nvim-telescope/telescope.nvim',
+        dependencies = { 'nvim-lua/plenary.nvim' },
+      },
+    },
+    keys = {
+      { -- lazy style key map
+        '<leader>u',
+        '<cmd>Telescope undo<cr>',
+        desc = 'undo history',
+      },
+    },
+    opts = {
+      -- don't use `defaults = { }` here, do this in the main telescope spec
+      extensions = {
+        undo = {
+          -- telescope-undo.nvim config, see below
+        },
+        -- no other extensions here, they can have their own spec too
+      },
+    },
+    config = function(_, opts)
+      -- Calling telescope's setup from multiple specs does not hurt, it will happily merge the
+      -- configs for us. We won't use data, as everything is in it's own namespace (telescope
+      -- defaults, as well as each extension).
+      require('telescope').setup(opts)
+      require('telescope').load_extension 'undo'
+    end,
+  },
   { -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
     dependencies = {
@@ -535,7 +668,6 @@ require('lazy').setup({
               end,
             })
           end
-
           -- The following autocommand is used to enable inlay hints in your
           -- code, if the language server you are using supports them
           --
@@ -718,9 +850,9 @@ require('lazy').setup({
         -- No, but seriously. Please read `:help ins-completion`, it is really good!
         mapping = cmp.mapping.preset.insert {
           -- Select the [n]ext item
-          ['<C-n>'] = cmp.mapping.select_next_item(),
+          --['<C-n>'] = cmp.mapping.select_next_item(),
           -- Select the [p]revious item
-          ['<C-p>'] = cmp.mapping.select_prev_item(),
+          --['<C-p>'] = cmp.mapping.select_prev_item(),
 
           -- Scroll the documentation window [b]ack / [f]orward
           ['<C-b>'] = cmp.mapping.scroll_docs(-4),
@@ -729,13 +861,17 @@ require('lazy').setup({
           -- Accept ([y]es) the completion.
           --  This will auto-import if your LSP supports it.
           --  This will expand snippets if the LSP sent a snippet.
-          ['<C-y>'] = cmp.mapping.confirm { select = true },
+          --['<C-y>'] = cmp.mapping.confirm { select = true },
 
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
           --['<CR>'] = cmp.mapping.confirm { select = true },
           --['<Tab>'] = cmp.mapping.select_next_item(),
           --['<S-Tab>'] = cmp.mapping.select_prev_item(),
+          -- custom keybinds
+          ['<Tab>'] = cmp.mapping.confirm { select = true },
+          ['<C-n>'] = cmp.mapping.select_next_item(),
+          ['<C-p>'] = cmp.mapping.select_prev_item(),
 
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
