@@ -26,4 +26,20 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
+-- When opened with a directory argument (e.g. nvim .), replace the
+-- directory buffer with an empty buffer and open neo-tree for that directory
+vim.api.nvim_create_autocmd('VimEnter', {
+  desc = 'Open neo-tree when nvim is opened with a directory argument',
+  group = vim.api.nvim_create_augroup('neotree-dir-open', { clear = true }),
+  callback = function()
+    local arg = vim.fn.argv(0)
+    if type(arg) == 'string' and vim.fn.isdirectory(arg) == 1 then
+      vim.schedule(function()
+        vim.cmd 'enew'
+        vim.cmd('Neotree dir=' .. vim.fn.fnamemodify(arg, ':p'))
+      end)
+    end
+  end,
+})
+
 -- vim: ts=2 sts=2 sw=2 et

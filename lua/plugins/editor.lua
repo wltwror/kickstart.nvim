@@ -79,7 +79,7 @@ return {
       vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
         group = lint_augroup,
         callback = function()
-          require('lint').try_lint()
+          pcall(require('lint').try_lint, nil, { ignore_errors = true })
         end,
       })
     end,
@@ -99,6 +99,7 @@ return {
       { '\\', ':Neotree reveal<CR>', { desc = 'NeoTree reveal' } },
     },
     opts = {
+      open_files_do_not_replace_types = { 'terminal', 'trouble', 'qf', 'neo-tree' },
       filesystem = {
         window = {
           mappings = {
