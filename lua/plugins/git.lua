@@ -55,7 +55,7 @@ return {
         end, { desc = 'git [b]lame line' })
         map('n', '<leader>tb', gitsigns.toggle_current_line_blame, { desc = '[T]oggle git show [b]lame line' })
         map('n', '<leader>hd', gitsigns.diffthis, { desc = 'git [d]iff against index' })
-        map('n', '<leader>hD', function()
+        map('n', '<leader>hc', function()
           gitsigns.diffthis '~'
         end, { desc = 'git [D]iff against last commit' })
         map('n', '<leader>td', gitsigns.toggle_deleted, { desc = '[T]oggle git show [D]eleted' })
